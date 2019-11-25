@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="false"
+        android:keepScreenOn="true"
+        android:background="@android:color/black"
+        android:id="@+id/parentLayout">
+    <!--tools:context=".MainActivity">-->
+
+    <RelativeLayout
+        android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+        <ImageView
+            android:id="@+id/emergencyButton"
+            android:layout_width="600px"
+            android:layout_height="600px"
+            android:layout_below="@+id/text"
+            android:layout_marginLeft="660px"
+            android:layout_marginTop="50dp"
+            android:background="@drawable/emergency_button" />
+
+        <TextView
+            android:id="@+id/text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:layout_marginLeft="40dp"
+            android:layout_marginRight="40dp"
+            android:text="Press the SOS button to inform the campus security for any emergency case."
+            android:textColor="#FFFFFF"
+            android:textSize="25sp" />
+
+        <net.majorkernelpanic.streaming.gl.SurfaceView
+            android:id="@+id/surfaceView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            />
+
+        <TextView
+            android:id="@+id/RTSPAddress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_marginStart="5dp"
+            android:layout_marginBottom="15dp"
+            android:text="aoi"
+            android:textColor="@color/colorAccent"
+            android:textSize="32sp" />
+    </RelativeLayout>
+
+
+    <Button
+        android:id="@+id/toggleView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="15dp"
+        android:layout_marginBottom="18dp"
+        android:text="Change to Admin View" />
+
+
+<!--    <ImageView-->
+<!--        android:id="@+id/snapshot"-->
+<!--        android:layout_width="400px"-->
+<!--        android:layout_height="400px"-->
+<!--        android:visibility="invisible"-->
+<!--        />-->
+
+<!--    <ImageView-->
+<!--        android:id="@+id/menu"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginStart="10dp"-->
+<!--        android:layout_marginTop="10dp"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toTopOf="parent"-->
+<!--        app:srcCompat="@android:drawable/ic_menu_sort_by_size"-->
+<!--        android:visibility="gone"/>-->
+
+<!--    <Button-->
+<!--        android:visibility="gone"-->
+<!--        android:id="@+id/startStop"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="Stop Server"-->
+<!--        app:layout_constraintBottom_toBottomOf="@+id/surfaceView"-->
+<!--        tools:layout_editor_absoluteX="310dp" />-->
+
+    <!--app:layout_constraintBottom_toTopOf="@+id/startStop"
+        app:layout_constraintStart_toStartOf="parent" />-->
+
+    <LinearLayout
+        android:id="@+id/linearLayout"
+        android:layout_width="200dp"
+        android:layout_height="100dp"
+        android:layout_marginTop="0dp"
+        android:layout_marginEnd="0dp"
+        android:orientation="horizontal"
+        android:visibility="invisible">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/textView2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Framerate:   "
+                android:textAlignment="textEnd"
+                android:textColor="@color/colorAccent" />
+
+            <TextView
+                android:id="@+id/textView3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Resolution:   "
+                android:textAlignment="viewEnd"
+                android:textColor="@color/colorAccent" />
+
+            <TextView
+                android:id="@+id/textView4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Bitrate:   "
+                android:textAlignment="viewEnd"
+                android:textColor="@color/colorAccent" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/showFramerate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/colorAccent" />
+
+            <TextView
+                android:id="@+id/showResolution"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/colorAccent" />
+
+            <TextView
+                android:id="@+id/showBitrate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/colorAccent" />
+        </LinearLayout>
+    </LinearLayout>
+
+
+</RelativeLayout>

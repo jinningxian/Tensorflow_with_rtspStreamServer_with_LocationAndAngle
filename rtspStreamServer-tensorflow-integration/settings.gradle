@@ -1,0 +1,3 @@
+include ':app', ':tensorfflow-lite'
+rootProject.name='rtspStream'
+include ':libstreaming'

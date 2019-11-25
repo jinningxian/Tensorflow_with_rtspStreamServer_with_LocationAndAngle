@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".Settings">
+
+    <EditText
+        android:id="@+id/portNumber"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:hint="Port Number"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="@+id/backButton"
+        app:layout_constraintTop_toBottomOf="@+id/optionsTextView" />
+
+    <EditText
+        android:id="@+id/resolutionW"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:ems="10"
+        android:hint="Resolution Width (eg. 640)"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="@+id/portNumber"
+        app:layout_constraintTop_toBottomOf="@+id/portNumber" />
+
+    <EditText
+        android:id="@+id/resolutionH"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="10dp"
+        android:ems="10"
+        android:hint="Resolution Height (eg. 480)"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toEndOf="@+id/resolutionW"
+        app:layout_constraintTop_toBottomOf="@+id/portNumber" />
+
+    <TextView
+        android:id="@+id/optionsTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="16dp"
+        android:text="Stream Options"
+        android:textColor="@android:color/black"
+        android:textSize="28sp"
+        app:layout_constraintStart_toEndOf="@+id/backButton"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/resolutionView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="X"
+        app:layout_constraintEnd_toStartOf="@+id/resolutionH"
+        app:layout_constraintStart_toEndOf="@+id/resolutionW"
+        app:layout_constraintTop_toTopOf="@+id/resolutionW" />
+
+    <EditText
+        android:id="@+id/videoBitrate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:ems="10"
+        android:hint="Bitrate (eg. 500000)"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="@+id/resolutionW"
+        app:layout_constraintTop_toBottomOf="@+id/resolutionW" />
+
+    <Button
+        android:id="@+id/applySettings"
+        style="@style/Widget.AppCompat.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@android:color/holo_blue_light"
+        android:text="APPLY"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <ImageView
+        android:id="@+id/backButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="20dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@android:drawable/ic_menu_revert" />
+
+    <Button
+        android:id="@+id/cancelSettings"
+        style="@style/Widget.AppCompat.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@android:color/holo_blue_light"
+        android:text="@android:string/cancel"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <EditText
+        android:id="@+id/framerate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:ems="10"
+        android:hint="Framerate (eg. 10)"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="@+id/videoBitrate"
+        app:layout_constraintTop_toBottomOf="@+id/videoBitrate" />
+</android.support.constraint.ConstraintLayout>
