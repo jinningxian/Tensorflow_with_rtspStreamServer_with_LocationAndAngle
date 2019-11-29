@@ -139,7 +139,7 @@ public class App extends Application {
 
     // -------------------- For MQTT -----------------------------
     //public static MqttHelper mqttHelper;
-    public boolean receivedNotification = false;
+    public static boolean receivedNotification = true;
     public String payload;
 
     public void startMqtt() {
@@ -161,11 +161,12 @@ public class App extends Application {
                 //-----------------Robot Acknowledge-----------------------------------
                 if (topic.equals(mqttHelper.subscribeRobotNotificationTopic)) {
                     //System.out.println("MQTT " + message);
-                    payload = message.toString();
+                    //payload = message.toString();
                     //JSONObject jsonObject= new JSONObject(message.toString());
                     //Log.i("CameraActivity", jsonObject.getString("status"));
-                    //if (jsonObject.getString("status").equals("acknowledged"))
-                    receivedNotification = true;
+                    //if (jsonObject.getString("status").equals("acknowledged"
+                    //if(message.toString().contains("acknowledge"))
+                    getNotificationTask(message);
                     //else System.out.println("Not acknowledged!");
                 } else if (topic.equals(mqttHelper.subscribeTaskTopic)) {
                     System.out.println("MQTT " + message);
@@ -1067,7 +1068,9 @@ public class App extends Application {
                             // Set Lift Navigation Mode
                             setProperty("nav.mode", "2");
                         }
-                        NavigationApi.get().startNavigationService(robotTask.getPositionName());
+                        //if (receivedNotification == true)
+                            NavigationApi.get().startNavigationService(robotTask.getPositionName());
+                       // else TtsPlay("I detect someone in this area, please acknowledge before asking me to move");
                     }
                     else
                     {
@@ -1092,7 +1095,9 @@ public class App extends Application {
                                                         // Set Lift Navigation Mode
                                                         setProperty("nav.mode", "2");
                                                     }
-                                                    NavigationApi.get().startNavigationService(robotTask.getPositionName());
+                                                    //if (receivedNotification == true)
+                                                        NavigationApi.get().startNavigationService(robotTask.getPositionName());
+                                                    //else TtsPlay("I detect someone in this area, please acknowledge before asking me to move");
                                                 }
                                                 else
                                                 {
@@ -1113,7 +1118,9 @@ public class App extends Application {
                                 // Set Lift Navigation Mode
                                 setProperty("nav.mode", "2");
                             }
-                            NavigationApi.get().startNavigationService(robotTask.getPositionName());
+                            //if (receivedNotification == true)
+                                NavigationApi.get().startNavigationService(robotTask.getPositionName());
+                            //else TtsPlay("I detect someone in this area, please acknowledge before asking me to move");
                         }
                     }
                 }
@@ -1122,6 +1129,19 @@ public class App extends Application {
             default:
                 break;
         }
+    }
+
+    private void getNotificationTask(MqttMessage mqttMessage) throws JSONException {
+        JSONObject reader = new JSONObject(mqttMessage.toString());
+        String ID = reader.getString("ID");
+        boolean sentToRfm = reader.getBoolean("sentToRfm");
+        String status = reader.getString("status");
+        String details = reader.getString("details");
+        if (status.equals("acknowledged")) {
+            NavigationApi.get().startNavigationService(robotTask.getPositionName());
+        }/*else if (status.equals("received")){
+            receivedNotification = true;
+        }*/
     }
     // mediafilehandler for SFTP audio broadcast
     public static MediaFileHandler mMediaFileHandler;

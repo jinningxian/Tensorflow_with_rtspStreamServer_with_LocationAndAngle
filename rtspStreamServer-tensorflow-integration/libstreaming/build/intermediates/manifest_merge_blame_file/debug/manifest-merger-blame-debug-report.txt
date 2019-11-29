@@ -6,8 +6,8 @@
 6
 7    <uses-sdk
 8        android:minSdkVersion="14"
-8-->C:\Users\17033965\Downloads\rtspStreamServer-tensorflow-integration\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
+8-->C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
 9        android:targetSdkVersion="19" />
-9-->C:\Users\17033965\Downloads\rtspStreamServer-tensorflow-integration\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
+9-->C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
 10
 11</manifest>

@@ -45,9 +45,11 @@ import android.util.Size;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceHolder.Callback;
+import android.widget.Toast;
 
 import com.ncs.rtspstream.App;
 import com.ncs.rtspstream.MainActivity;
+import com.ubtechinc.cruzr.sdk.navigation.NavigationApi;
 
 import net.majorkernelpanic.streaming.MediaStream;
 import net.majorkernelpanic.streaming.SessionBuilder;
@@ -80,6 +82,7 @@ import detection.tflite.Classifier;
 import detection.tflite.TFLiteObjectDetectionAPIModel;
 
 import static com.ncs.rtspstream.App.displayPosition;
+import static com.ncs.rtspstream.App.robotWorkStatus;
 
 
 /**
@@ -857,21 +860,27 @@ public abstract class VideoStream extends MediaStream {
 				for (final Classifier.Recognition result : results) {
 					final RectF location = result.getLocation();
 					if (result.getTitle().equals("person") && location != null && result.getConfidence() >= minimumConfidence) {
+						//App.receivedNotification = false;
 						ans = false;
-
+						canvas.drawRect(location, paint);
+						cropToFrameTransform.mapRect(location);
+						result.setLocation(location);
+						mappedRecognitions.add(result);
 						if(displayPosition!=null) {
 							Point nPoint = new Point(displayPosition[0],displayPosition[1],(displayPosition[2]+180));
 							ans = PointDetectAction(nPoint);
-							Log.d(" DETECT RESULT -1", ""+ans +"\nAngle" + (displayPosition[2]+180));
-							Log.d(" RESULT 0 ", ""+(displayPosition[2]+180));
+
+							Log.d(" RESULT0 ", "\nRESULT SHOW"+"\nCurrent Detection->" +
+									"\n X: " + displayPosition[0]+" Y: " + displayPosition[1] +
+									"\n X: " + currentDetectPoint.x+" Y: " + currentDetectPoint.y +
+									"\nUPDATEs Detection: " + ans);
+
 							if(ans){
-								canvas.drawRect(location, paint);
-								cropToFrameTransform.mapRect(location);
-								result.setLocation(location);
-								mappedRecognitions.add(result);
 								//objectIn9Sectors(location);
 								MainActivity.faceDetected = true;
-								Log.d(" RESULT1 ", ""+displayPosition[2]);
+								robotWorkStatus = 1;
+								//App.receivedNotification  = false;
+								Log.d(" RESULT1 ","X: " + displayPosition[0]+" Y: " + displayPosition[1]);
 							}
 
 						}
@@ -886,14 +895,15 @@ public abstract class VideoStream extends MediaStream {
 					Log.i("FileFormat", dateFormat.format(date) + ".jpg");
 					try {
 						bitmapHandler.save();
-						bitmapHandler.uploadFile("192.168.21.236", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
+//						bitmapHandler.uploadFile("192.168.21.236", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
 //                bitmapHandler.uploadFile("192.168.21.194","sftpuser", 22,"q1w2e3r4","sdcard/" + bitmapHandler.getFilename(),"/data/sftpuser/upload");
+						bitmapHandler.uploadFile("172.18.4.35", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
 						if (mqttHelper.isMqttConnected() && ans) {
 							Log.i(TAG, "detected something");
+							NavigationApi.get().stopNavigationService();
 							mqttHelper.publishRbNotification("Human Detected", bitmapHandler.getFilename(), "5c899c07-7b0a-4f1c-810e-f4bb419e1547");
 						}else{
 							Log.w(TAG, "Error, mqtt not connected!");
-
 						}
 
 					} catch (Exception e) {
@@ -1279,53 +1289,111 @@ public abstract class VideoStream extends MediaStream {
 
 
 
-	public static int CAMERAANGLERANGE = 30;
+
 	public static int CAMERADISTANCETODETECT = 107; //107 = 5 meters; ensure camera can only view 5 meters
 	public static Point currentDetectPoint = null;
-	private int angle(Point current, Point checkPoint){
-		double angle = Math.atan2((current.y-checkPoint.y),(current.x-checkPoint.x));
-		double theta = (180 / Math.PI) * angle;
-		if(theta < 0.0) theta += 360;
-		return (int) theta;
-	}
+
 	private double distance(Point current, Point checkPoint){
 		return Math.sqrt(Math.pow((current.x-checkPoint.x),2)+ Math.pow((current.y-checkPoint.y),2));
 	}
 	public boolean PointDetectAction(Point p){
+		if(currentDetectPoint == null || distance(currentDetectPoint,p)>CAMERADISTANCETODETECT){
+			currentDetectPoint = p;
+			return true;
+		}return false;
+	}
+
+
+//Location with camera view angle range
+
+/*	public static int CAMERAANGLERANGE = 60;
+	private int angle(Point current, Point checkPoint){
+		Log.d("RESULT3 part8 ", "["+current.x+","+current.y+"]||["+checkPoint.x+","+checkPoint.y+"]");
+		double angle = Math.atan2((current.y-checkPoint.y),(current.x-checkPoint.x));
+		Log.d(" RESULT3 part5 ", ""+(current.y-checkPoint.y)+","+ (current.x-checkPoint.x));
+		double theta = (angle*180 / Math.PI);
+		if(theta < 0) theta += 360;
+
+
+
+		Log.d(" RESULT3 part6 ", ""+theta);
+		Log.d(" RESULT3 part7 ", ""+(int)theta);
+		return (int) theta;
+	}
+	public boolean PointDetectAction(Point p){
+
 		if(currentDetectPoint == null){
 			currentDetectPoint = p;
 			return true;
 		}
-		if(distance(p,currentDetectPoint)>CAMERADISTANCETODETECT){
+		double dis = distance(p,currentDetectPoint);
+		if(dis>CAMERADISTANCETODETECT){
+			Log.d(" RESULT1 ", "More than detect distance");
 			currentDetectPoint = p;
 			return true;
-		}else if(distance(p,currentDetectPoint)==0){
+
+		}else if(dis==0){
 			if(angleCompred(currentDetectPoint.angle, p.angle)) {
-				return false;
-			}else{
+				Log.d(" RESULT1 ", "Same Location");
 				currentDetectPoint = p;
 				return true;
 			}
-
 		}else{
 			double mPointX, mPointY;//, mPointDistance;
 			mPointX = (currentDetectPoint.x + p.x)/2;
 			mPointY = (currentDetectPoint.y + p.y)/2;
+
 			double hPointX, hPointY;
 			hPointX = Math.sqrt(Math.pow(CAMERADISTANCETODETECT,2)- Math.pow(p.x-mPointX,2));
 			hPointY = Math.sqrt(Math.pow(CAMERADISTANCETODETECT,2)- Math.pow(p.y-mPointY,2));
+
 			Point interPoint1, interPoint2;
 			interPoint1 = new Point(mPointX+hPointX,mPointY+hPointY);
 			interPoint2 = new Point(mPointX-hPointX,mPointY-hPointY);
+			Log.d(" RESULT3 part1 ", "["+interPoint1.x +", " + interPoint1.y+"]||["+interPoint2.x+","+interPoint2.y+"]");
+			Log.d(" RESULT3 part2 ", ""+mPointX+","+hPointX +", " + hPointY+","+mPointY);
 			double angleBetweenIP1, angleBetweenIP2;
-			angleBetweenIP1 = angle(currentDetectPoint, interPoint1);
-			angleBetweenIP2 = angle(currentDetectPoint, interPoint2);
+			angleBetweenIP1 = angle(interPoint1, currentDetectPoint);
+			angleBetweenIP2 = angle(interPoint2, currentDetectPoint);
+			Log.d(" RESULT3 part3 ", ""+angleBetweenIP1 +", " + angleBetweenIP2);
+
+			Log.d(" RESULT3 part4 ", "["+(interPoint1.x)+ ","+(interPoint1.y)+"]||[" +(interPoint2.x)+","+(interPoint2.y)+"]");
 			if(angleCompred(currentDetectPoint.angle,angleBetweenIP1) || angleCompred(currentDetectPoint.angle,angleBetweenIP2)){
-				return false;
-			}currentDetectPoint = p; return true;
+				currentDetectPoint = p;
+				return true;
+			}
+
+
+			if(angleCompred(currentDetectPoint.angle,angle(currentDetectPoint, new Point(mPointX+hPointX,mPointY+hPointY)))
+					||angleCompred(currentDetectPoint.angle,angle(currentDetectPoint, new Point(mPointX-hPointX,mPointY-hPointY)))){
+				currentDetectPoint = p;
+				return true;
+			}
+			 if(angleCompred(angle(p,currentDetectPoint), currentDetectPoint.angle)){
+				 Log.d(" RESULT1 ", "Different Location");
+			 	currentDetectPoint = p;
+			 	return true;
+			 }
 		}
+		return false;
 	}
 	public boolean angleCompred(double stock, double newAngle) {
+		double result = 0;
+		result= ((stock - newAngle)+360) % 360;
+		Log.d(" RESULT2 ","RESULT ANGLE "+ stock +" - " + newAngle +" = "+result);
+		if(result > 180) return result-180 > CAMERAANGLERANGE;
+		return result > CAMERAANGLERANGE;
+
+
+		}
+
+		if(stock > newAngle) result= stock - newAngle;
+		else result = newAngle - stock;
+		if(result > 0)
+			Log.d(" RESULT2 ","RESULT ANGLE "+ stock +" - " + newAngle +" = "+result);
+		if(result > 180) return (360-result) > CAMERAANGLERANGE;
+		else return result > CAMERAANGLERANGE;
+
 		stock %= 360; newAngle%=360;
 		if(newAngle > 330 && stock < 30){
 			return !((newAngle+30)%360 < stock);
@@ -1334,7 +1402,8 @@ public abstract class VideoStream extends MediaStream {
 
 		Log.d("Test 10", ""+b);
 		return b<CAMERAANGLERANGE;
-	}
+
+
 
 	//Return 0 = first sector, Return 1= second sector, Return 2 = third sector, Return 3 = all 3 Sector
 	protected boolean[] objectInSectorWidth(RectF location){
@@ -1379,5 +1448,7 @@ public abstract class VideoStream extends MediaStream {
 			}
 		}
 		return area;
-	}
+	}*/
+
+
 }
