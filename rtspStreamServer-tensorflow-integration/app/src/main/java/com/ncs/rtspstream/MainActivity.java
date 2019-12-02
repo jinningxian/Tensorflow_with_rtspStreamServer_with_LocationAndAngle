@@ -4,15 +4,26 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.PixelFormat;
+import android.graphics.RectF;
 import android.hardware.Camera;
+import android.media.MediaCodec;
+import android.media.MediaFormat;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.text.format.Formatter;
 import android.util.Log;
+import android.util.Size;
 import android.view.LayoutInflater;
 import android.view.SurfaceHolder;
 import android.view.View;
@@ -23,15 +34,35 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.ubtechinc.cruzr.sdk.navigation.NavigationApi;
+
 import net.majorkernelpanic.streaming.SessionBuilder;
 import net.majorkernelpanic.streaming.gl.SurfaceView;
+import net.majorkernelpanic.streaming.hw.EncoderDebugger;
+import net.majorkernelpanic.streaming.hw.NV21Convertor;
 import net.majorkernelpanic.streaming.rtsp.RtspServer;
+import net.majorkernelpanic.streaming.video.ImageUtils;
+import net.majorkernelpanic.streaming.video.Point;
 import net.majorkernelpanic.streaming.video.VideoQuality;
+import net.majorkernelpanic.streaming.video.VideoStream;
 
+import java.nio.ByteBuffer;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.LinkedList;
+import java.util.List;
+
+import detection.BitmapHandler;
 import detection.MediaFileHandler;
+import detection.MqttHelper;
 import detection.customview.OverlayView;
+import detection.tflite.Classifier;
+import detection.tflite.TFLiteObjectDetectionAPIModel;
 import detection.tracking.MultiBoxTracker;
 
+import static com.ncs.rtspstream.App.displayPosition;
+import static com.ncs.rtspstream.App.robotWorkStatus;
 
 /**
  * A straightforward example of how to use the RTSP server included in libstreaming.
@@ -191,6 +222,7 @@ public class MainActivity extends AppCompatActivity {
         this.startService(new Intent(getApplicationContext(),RtspServer.class));
         App.mMediaFileHandler = new MediaFileHandler(getApplicationContext());
 
+        videoAnalyticsStart(mCamera);
         // TODO: see if the preview will start automatically, yes it does
         // when an rtsp instance starts, the surface is left as is, but no buffer can be extracted
 
@@ -389,6 +421,269 @@ public class MainActivity extends AppCompatActivity {
 
     }*/
 
+
+    //---------------------start VA on startup--------------------------------------------
+    private AssetManager assetManager;
+    public Classifier detector;
+    // Configuration values for the prepackaged SSD model.
+    private static final int TF_OD_API_INPUT_SIZE = 300;
+    private static final boolean TF_OD_API_IS_QUANTIZED = true;
+    private static final String TF_OD_API_MODEL_FILE = "detect.tflite";
+    private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/labelmap.txt";
+    private static final DetectorMode MODE = DetectorMode.TF_OD_API;
+    //private static final DetectorMode MODE = DetectorMode.TF_OD_API;
+    // Minimum detection confidence to track a detection.
+    private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.5f;
+    private static final boolean MAINTAIN_ASPECT = false;
+    private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
+    private static final boolean SAVE_PREVIEW_BITMAP = false;
+    private static final float TEXT_SIZE_DIP = 10;
+
+    Runnable imageConverter;
+
+    private enum DetectorMode {
+        TF_OD_API;
+    }
+
+    private void videoAnalyticsStart(Camera camera){
+        mCamera.startPreview();
+        assetManager = getApplicationContext().getAssets();
+        try {
+            detector =
+                    TFLiteObjectDetectionAPIModel.create(
+                            assetManager,
+                            TF_OD_API_MODEL_FILE,
+                            TF_OD_API_LABELS_FILE,
+                            TF_OD_API_INPUT_SIZE,
+                            TF_OD_API_IS_QUANTIZED);
+            cropSize = TF_OD_API_INPUT_SIZE;
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+        Camera.PreviewCallback callback = new Camera.PreviewCallback() {
+            long now = System.nanoTime()/1000, oldnow = now, i=0;
+            @Override
+            synchronized public void onPreviewFrame(final byte[] data, Camera camera) {
+                oldnow = now;
+                now = System.nanoTime()/1000;
+                try {
+                    if (MainActivity.cameraRelease == true){
+                        Log.i(TAG, "Camera has been released!");
+                        return;
+                    }
+                    runDetection(data, camera);
+                } finally {
+                    mCamera.addCallbackBuffer(data);
+                }
+            }
+        };
+    }
+
+    private long timestamp = 0, lastProcessingTimeMs;
+    private boolean computingDetection = false;
+    public Bitmap croppedBitmap, cropCopyBitmap;
+    private Matrix frameToCropTransform;
+    private Matrix cropToFrameTransform;
+    public MqttHelper mqttHelper = App.mqttHelper;
+    boolean ans = false;
+    private int[] rgbBytes;
+    private Bitmap image;
+    private int cropSize;
+    private int previewWidth, previewHeight;
+    private boolean readyForNextImage = false;
+
+    private void runDetection(byte[] data, Camera camera){
+        imageConverter =
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        ImageUtils.convertYUV420SPToARGB8888(
+                                data,
+                                camera.getParameters().getPreviewSize().width,
+                                camera.getParameters().getPreviewSize().height,
+                                rgbBytes);
+                        image = Bitmap.createBitmap(camera.getParameters().getPreviewSize().width, camera.getParameters().getPreviewSize().height, Bitmap.Config.ARGB_8888);
+                        image.setPixels(rgbBytes, 0, camera.getParameters().getPreviewSize().width, 0, 0, camera.getParameters().getPreviewSize().width, camera.getParameters().getPreviewSize().height);
+                    }
+                };
+        Camera.Size previewSize = camera.getParameters().getPreviewSize();
+        int previewHeight = previewSize.height;
+        int previewWidth = previewSize.width;
+        rgbBytes = new int[previewWidth * previewHeight];
+        imageConverter.run();
+        croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Bitmap.Config.ARGB_8888);
+        processImage();
+    }
+
+    protected void processImage() {
+        ++timestamp;
+        final long currTimestamp = timestamp;
+        //trackingOverlay.postInvalidate();
+
+        frameToCropTransform =
+                ImageUtils.getTransformationMatrix(
+                        previewWidth, previewHeight,
+                        cropSize, cropSize,
+                        0, MAINTAIN_ASPECT);
+        cropToFrameTransform = new Matrix();
+        frameToCropTransform.invert(cropToFrameTransform);
+
+        // No mutex needed as this method is not reentrant.
+        if (computingDetection) {
+            //readyForNextImage(); // just add callback buffer and toggle an isprocessingframe
+            readyForNextImage = false;
+            return;
+        }
+        computingDetection = true;
+        Log.i(TAG, "Preparing image " + currTimestamp + " for detection in bg thread.");
+
+        image.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight);
+
+        //readyForNextImage(); // just add callback buffer and toggle an isprocessingframe
+
+        final Canvas canvas = new Canvas(croppedBitmap);
+        canvas.drawBitmap(image, frameToCropTransform, null);
+        // For examining the actual TF input.
+        if (SAVE_PREVIEW_BITMAP) {
+            ImageUtils.saveBitmap(croppedBitmap);
+        }
+        if (detectInBackground != null){
+            detectInBackground.run();
+        }
+
+    }
+
+    public Runnable detectInBackground = new Thread() {
+        @Override
+        public void run() {
+            if (mCamera != null) {
+                Log.i(TAG,"Running detection on image " + System.nanoTime()/1000);
+                final long startTime = SystemClock.uptimeMillis();
+                final List<Classifier.Recognition> results = detector.recognizeImage(croppedBitmap);
+                lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
+
+                cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
+                final Canvas canvas = new Canvas(cropCopyBitmap);
+                final Paint paint = new Paint();
+                paint.setColor(Color.RED);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2.0f);
+
+                float minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
+                switch (MODE) {
+                    case TF_OD_API:
+                        minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
+                        break;
+                }
+
+                final List<Classifier.Recognition> mappedRecognitions =
+                        new LinkedList<Classifier.Recognition>();
+
+                for (final Classifier.Recognition result : results) {
+                    final RectF location = result.getLocation();
+                    if (result.getTitle().equals("person") && location != null && result.getConfidence() >= minimumConfidence) {
+                        //App.receivedNotification = false;
+                        ans = false;
+                        canvas.drawRect(location, paint);
+                        cropToFrameTransform.mapRect(location);
+                        result.setLocation(location);
+                        mappedRecognitions.add(result);
+                        if(displayPosition!=null) {
+                            Point nPoint = new Point(displayPosition[0],displayPosition[1],(displayPosition[2]+180));
+                            ans = PointDetectAction(nPoint);
+
+                            Log.d(" RESULT0 ", "\nRESULT SHOW"+"\nCurrent Detection->" +
+                                    "\n X: " + displayPosition[0]+" Y: " + displayPosition[1] +
+                                    "\n X: " + currentDetectPoint.x+" Y: " + currentDetectPoint.y +
+                                    "\nUPDATEs Detection: " + ans);
+
+                            if(ans){
+                                //objectIn9Sectors(location);
+                                MainActivity.faceDetected = true;
+                                robotWorkStatus = 1;
+                                //App.receivedNotification  = false;
+                                Log.d(" RESULT1 ","X: " + displayPosition[0]+" Y: " + displayPosition[1]);
+                            }
+
+                        }
+
+                    }
+                }
+
+                if (MainActivity.faceDetected == true){//CameraActivity.faceDetected == true) {
+                    DateFormat dateFormat = new SimpleDateFormat("yyyymmdd_hhmmss");
+                    Date date = new Date();
+                    BitmapHandler bitmapHandler = new BitmapHandler(cropCopyBitmap, dateFormat.format(date) + ".jpg", 1L);
+                    Log.i("FileFormat", dateFormat.format(date) + ".jpg");
+                    try {
+                        bitmapHandler.save();
+//						bitmapHandler.uploadFile("192.168.21.236", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
+//                bitmapHandler.uploadFile("192.168.21.194","sftpuser", 22,"q1w2e3r4","sdcard/" + bitmapHandler.getFilename(),"/data/sftpuser/upload");
+                        bitmapHandler.uploadFile("172.18.4.35", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
+                        if (mqttHelper.isMqttConnected() && ans) {
+                            Log.i(TAG, "detected something");
+                            NavigationApi.get().stopNavigationService();
+                            mqttHelper.publishRbNotification("Human Detected", bitmapHandler.getFilename(), "5c899c07-7b0a-4f1c-810e-f4bb419e1547");
+                        }else{
+                            Log.w(TAG, "Error, mqtt not connected!");
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                computingDetection = false;
+
+                //tracker.trackResults(mappedRecognitions, currTimestamp);
+                //trackingOverlay.postInvalidate();
+
+							/*computingDetection = false;
+							((Activity)SessionBuilder.getInstance().getContext()).runOnUiThread(
+									new Runnable() {
+										@Override
+										public void run() {
+											*//*screenshot.setImageBitmap(cropCopyBitmap);
+
+											showFrameInfo(previewWidth + "x" + previewHeight);
+											showCropInfo(cropCopyBitmap.getWidth() + "x" + cropCopyBitmap.getHeight());
+											showInference(lastProcessingTimeMs + "ms");*//*
+										}
+									});*/
+/*
+							// ----------------received notification------------------
+							if (receivedNotification == true) {
+								JSONObject jsonObject;
+								try {
+									jsonObject = new JSONObject(payload.toString());
+									String toastMessage = jsonObject.getString("status").equals("acknowledged") ? "Notification Acknowledged!" : payload;
+									Log.i("DectectorActivity", toastMessage);
+									Toast.makeText(DetectorActivity.this, toastMessage, Toast.LENGTH_LONG).show();
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+								//Toast.makeText(DetectorActivity.this, payload, Toast.LENGTH_LONG).show();
+								receivedNotification = false;
+							}*/
+            }
+
+        }
+    };
+
+    public static int CAMERADISTANCETODETECT = 107; //107 = 5 meters; ensure camera can only view 5 meters
+    public static Point currentDetectPoint = null;
+
+    private double distance(Point current, Point checkPoint){
+        return Math.sqrt(Math.pow((current.x-checkPoint.x),2)+ Math.pow((current.y-checkPoint.y),2));
+    }
+    public boolean PointDetectAction(Point p){
+        if(currentDetectPoint == null || distance(currentDetectPoint,p)>CAMERADISTANCETODETECT){
+            currentDetectPoint = p;
+            return true;
+        }return false;
+    }
 
 }
 

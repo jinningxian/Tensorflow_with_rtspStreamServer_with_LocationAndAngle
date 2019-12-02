@@ -40,12 +40,12 @@ public class MqttHelper {
     private static final String TAG = "MqttHelper";
 //    private static final String serverUri = "tcp://192.168.21.194:1883";                 // Intel NUC broker
 //    private static final String serverUri = "tcp://192.168.21.57:1883";                 // SIT: localhost
-
+    private static final String serverUri = "tcp://172.18.4.36:1883";
 //    private static final String serverUri = "tcp://127.0.0.1:1883";                 // SIT: localhost
 //    private static final String serverUri = "tcp://172.18.4.32:1883";                 // SIT: KY's Laptop
 //    private static final String serverUri = "tcp://192.168.21.241";              // NCS: KY's Laptop
 //    private static final String serverUri = "tcp://192.168.21.36:1883";               // Robot's Adaptor
-private static final String serverUri = "tcp://172.18.4.36:1883";               // Robot's Adaptor @ SIT
+//private static final String serverUri = "tcp://172.18.4.36:1883";               // Robot's Adaptor @ SIT
 //    private static final String serverUri = "tcp://postman.cloudmqtt.com:11516";   // CloudMQTT
 //    private static final String serverUri = "tcp://192.168.21.72:1883";                 // Bryan Laptop broker
     private static final String username = "ymikzszg";

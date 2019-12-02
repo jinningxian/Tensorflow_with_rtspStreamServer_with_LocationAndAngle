@@ -1,37 +1,37 @@
 -- Merging decision tree log ---
 manifest
-ADDED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:1:1-7:12
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:1:1-7:12
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:1:1-7:12
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:1:1-7:12
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:1:1-7:12
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:1:1-7:12
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:1:1-7:12
+ADDED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:1:1-7:12
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:1:1-7:12
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:1:1-7:12
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:1:1-7:12
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:1:1-7:12
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:1:1-7:12
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:1:1-7:12
 	package
-		ADDED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:2:5-45
-		INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
-		INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
+		ADDED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:2:5-45
+		INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
+		INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
 	android:versionName
-		ADDED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:4:5-30
-		INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
-		INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
+		ADDED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:4:5-30
+		INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
+		INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
 	xmlns:android
-		ADDED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:1:11-69
+		ADDED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:1:11-69
 	android:versionCode
-		ADDED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml:3:5-29
-		INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
-		INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
+		ADDED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml:3:5-29
+		INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
+		INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
 uses-sdk
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml reason: use-sdk injection requested
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
-INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
+INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
 	android:targetSdkVersion
-		INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
-		ADDED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
-		INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
+		INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
+		ADDED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
+		INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
 	android:minSdkVersion
-		INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
-		ADDED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
-		INJECTED from C:\Users\17033965\gitRepo\Tensorflow_with_rtspStreamServer_with_LocationAndAngle\rtspStreamServer-tensorflow-integration\libstreaming\src\main\AndroidManifest.xml
+		INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
+		ADDED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml
+		INJECTED from /home/spdpnd98/AndroidStudioProjects/Tensorflow_with_rtspStreamServer_with_LocationAndAngle/rtspStreamServer-tensorflow-integration/libstreaming/src/main/AndroidManifest.xml

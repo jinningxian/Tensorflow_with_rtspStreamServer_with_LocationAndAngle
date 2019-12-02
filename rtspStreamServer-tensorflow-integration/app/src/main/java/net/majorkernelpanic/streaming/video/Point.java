@@ -1,8 +1,8 @@
 package net.majorkernelpanic.streaming.video;
 
 public class Point {
-    double x;
-    double y;
+    public double x;
+    public double y;
 
     public double getX() {
         return x;

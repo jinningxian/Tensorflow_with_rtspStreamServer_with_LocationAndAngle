@@ -72,6 +72,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -867,21 +869,44 @@ public abstract class VideoStream extends MediaStream {
 						result.setLocation(location);
 						mappedRecognitions.add(result);
 						if(displayPosition!=null) {
-							Point nPoint = new Point(displayPosition[0],displayPosition[1],(displayPosition[2]+180));
-							ans = PointDetectAction(nPoint);
+//
+//							Point nPoint = new Point(displayPosition[0],displayPosition[1],(displayPosition[2]+180));
+//							ans = PointDetectAction(nPoint);
+//
+//							Log.d(" RESULT0 ", "\nRESULT SHOW"+"\nCurrent Detection->" +
+//									"\n X: " + displayPosition[0]+" Y: " + displayPosition[1] +
+//									"\n X: " + currentDetectPoint.x+" Y: " + currentDetectPoint.y +
+//									"\nUPDATEs Detection: " + ans);
+//
+//							if(ans){
+//								//objectIn9Sectors(location);
+//								MainActivity.faceDetected = true;
+//								robotWorkStatus = 1;
+//								//App.receivedNotification  = false;
+//								Log.d(" RESULT1 ","X: " + displayPosition[0]+" Y: " + displayPosition[1]);
+//							}
+							checkDistance = new Runnable() {
+								@Override
+								public void run() {
 
-							Log.d(" RESULT0 ", "\nRESULT SHOW"+"\nCurrent Detection->" +
-									"\n X: " + displayPosition[0]+" Y: " + displayPosition[1] +
-									"\n X: " + currentDetectPoint.x+" Y: " + currentDetectPoint.y +
-									"\nUPDATEs Detection: " + ans);
+									Point nPoint = new Point(displayPosition[0],displayPosition[1],(displayPosition[2]+180));
+									ans = PointDetectAction(nPoint);
 
-							if(ans){
-								//objectIn9Sectors(location);
-								MainActivity.faceDetected = true;
-								robotWorkStatus = 1;
-								//App.receivedNotification  = false;
-								Log.d(" RESULT1 ","X: " + displayPosition[0]+" Y: " + displayPosition[1]);
-							}
+									Log.d(" RESULT0 ", "\nRESULT SHOW"+"\nCurrent Detection->" +
+											"\n X: " + displayPosition[0]+" Y: " + displayPosition[1] +
+											"\n X: " + currentDetectPoint.x+" Y: " + currentDetectPoint.y +
+											"\nUPDATEs Detection: " + ans);
+
+									if(ans){
+										//objectIn9Sectors(location);
+										MainActivity.faceDetected = true;
+										robotWorkStatus = 1;
+										//App.receivedNotification  = false;
+										Log.d(" RESULT1 ","X: " + displayPosition[0]+" Y: " + displayPosition[1]);
+									}
+								}
+							};
+							executorService.submit(checkDistance);
 
 						}
 
@@ -1302,6 +1327,10 @@ public abstract class VideoStream extends MediaStream {
 			return true;
 		}return false;
 	}
+
+	private ExecutorService executorService = Executors.newFixedThreadPool(1);
+
+	private Runnable checkDistance;
 
 
 //Location with camera view angle range
