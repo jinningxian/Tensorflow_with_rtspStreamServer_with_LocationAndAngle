@@ -220,9 +220,9 @@ public class MainActivity extends AppCompatActivity {
         //mSurfaceView.getHolder().setFormat(PixelFormat.TRANSPARENT);
         // Starts the RTSP server
         this.startService(new Intent(getApplicationContext(),RtspServer.class));
-        App.mMediaFileHandler = new MediaFileHandler(getApplicationContext());
+        //App.mMediaFileHandler = new MediaFileHandler(getApplicationContext());
 
-        videoAnalyticsStart(mCamera);
+        //videoAnalyticsStart(mCamera);
         // TODO: see if the preview will start automatically, yes it does
         // when an rtsp instance starts, the surface is left as is, but no buffer can be extracted
 

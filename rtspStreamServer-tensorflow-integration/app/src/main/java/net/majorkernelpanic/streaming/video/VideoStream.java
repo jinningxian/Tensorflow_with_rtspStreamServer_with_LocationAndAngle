@@ -86,7 +86,6 @@ import detection.tflite.TFLiteObjectDetectionAPIModel;
 import static com.ncs.rtspstream.App.displayPosition;
 import static com.ncs.rtspstream.App.robotWorkStatus;
 
-
 /**
  * Don't use this class directly.
  */
@@ -554,8 +553,8 @@ public abstract class VideoStream extends MediaStream {
 
 	private int cropSize;
 	private AssetManager assetManager;
-	private int previewHeight;
-	private int previewWidth;
+	private int previewHeight= 480;
+	private int previewWidth = 640;
 	private int[] rgbBytes;
 
 	private boolean readyForNextImage = false;
@@ -762,8 +761,15 @@ public abstract class VideoStream extends MediaStream {
 	private Matrix cropToFrameTransform;
 	public MqttHelper mqttHelper = App.mqttHelper;
 	boolean ans = false;
+	private ExecutorService processImageExecutors = Executors.newFixedThreadPool(1);
 
 	private void runDetection(byte[] data, Camera camera){
+
+		Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
+		previewHeight = previewSize.height;
+		previewWidth = previewSize.width;
+		rgbBytes = new int[previewWidth * previewHeight];
+
 		imageConverter =
 				new Runnable() {
 					@Override
@@ -773,29 +779,66 @@ public abstract class VideoStream extends MediaStream {
 								previewWidth,
 								previewHeight,
 								rgbBytes);
-						image = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
-						image.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight);
+//						image = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
+//						image.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight);
 					}
 				};
-		Camera.Size previewSize = camera.getParameters().getPreviewSize();
-		previewHeight = previewSize.height;
-		previewWidth = previewSize.width;
-		rgbBytes = new int[previewWidth * previewHeight];
-		imageConverter.run();
-		croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Bitmap.Config.ARGB_8888);
-		processImage();
-		//if (MainActivity.faceDetected == false){
-		//	processImage();
-//		} else {
-//			if (runnable == false){
-//				runnable = true;
-//				timeOut();
-//				startHandler();
-//			}
-//		}
-	}
 
-	protected void processImage() {
+		detectInBackground = new Runnable() {
+			@Override
+			public void run() {
+				if (mCamera != null) {
+					Log.i(TAG,"Running detection on image " + System.nanoTime()/1000);
+					final long startTime = SystemClock.uptimeMillis();
+					final List<Classifier.Recognition> results = detector.recognizeImage(croppedBitmap);
+					lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
+
+					cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
+					final Canvas canvas = new Canvas(cropCopyBitmap);
+					final Paint paint = new Paint();
+					paint.setColor(Color.RED);
+					paint.setStyle(Paint.Style.STROKE);
+					paint.setStrokeWidth(2.0f);
+
+					float minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
+					switch (MODE) {
+						case TF_OD_API:
+							minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
+							break;
+					}
+
+					final List<Classifier.Recognition> mappedRecognitions =
+							new LinkedList<Classifier.Recognition>();
+
+					for (final Classifier.Recognition result : results) {
+						final RectF location = result.getLocation();
+						if (result.getTitle().equals("person") && location != null && result.getConfidence() >= minimumConfidence) {
+							//App.receivedNotification = false;
+							Log.i(TAG, "Person detected!");
+							ans = false;
+							canvas.drawRect(location, paint);
+							cropToFrameTransform.mapRect(location);
+							result.setLocation(location);
+							mappedRecognitions.add(result);
+							if(displayPosition!=null) {
+								Log.i(TAG, "Checking distance...");
+								checkDistance.run();
+							}
+							else{
+								Log.i(TAG, "displayPosition is nul!!!");
+							}
+
+						}
+					}
+				}
+
+			}
+		};
+
+		processImageExecutors.execute(imageConverter);
+		croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Bitmap.Config.ARGB_8888);
+		image = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
+
 		++timestamp;
 		final long currTimestamp = timestamp;
 		//trackingOverlay.postInvalidate();
@@ -825,15 +868,112 @@ public abstract class VideoStream extends MediaStream {
 		canvas.drawBitmap(image, frameToCropTransform, null);
 		// For examining the actual TF input.
 		if (SAVE_PREVIEW_BITMAP) {
-			ImageUtils.saveBitmap(croppedBitmap);
+			Runnable r = new Runnable() {
+				@Override
+				public void run() {
+					ImageUtils.saveBitmap(croppedBitmap);
+				}
+			};
+			executorService.execute(r);
 		}
 		if (detectInBackground != null){
-			detectInBackground.run();
+//			detectInBackground.run();
+			processImageExecutors.execute(detectInBackground);
 		}
 
+//		rgbBytes = new int[previewWidth * previewHeight];
+//		//imageConverter.run();
+//		processImageExecutors.execute(imageConverter);
+//		croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Bitmap.Config.ARGB_8888);
+//		processImage();
+		//if (MainActivity.faceDetected == false){
+		//	processImage();
+//		} else {
+//			if (runnable == false){
+//				runnable = true;
+//				timeOut();
+//				startHandler();
+//			}
+//		}
 	}
 
-	public Runnable detectInBackground = new Thread() {
+//	protected void processImage() {
+
+//		Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
+//		previewHeight = previewSize.height;
+//		previewWidth = previewSize.width;
+//		rgbBytes = new int[previewWidth * previewHeight];
+//
+//		imageConverter =
+//				new Runnable() {
+//					@Override
+//					public void run() {
+//
+//						Camera.Size previewSize = camera.getParameters().getPreviewSize();
+//						previewHeight = previewSize.height;
+//						previewWidth = previewSize.width;
+//						rgbBytes = new int[previewWidth * previewHeight];
+//
+//						ImageUtils.convertYUV420SPToARGB8888(
+//								data,
+//								previewWidth,
+//								previewHeight,
+//								rgbBytes);
+//						image = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
+//						image.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight);
+//					}
+//				};
+//		processImageExecutors.execute(imageConverter);
+//
+//		//imageConverter.run();
+//		processImageExecutors.execute(imageConverter);
+//		croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Bitmap.Config.ARGB_8888);
+//
+//		++timestamp;
+//		final long currTimestamp = timestamp;
+//		//trackingOverlay.postInvalidate();
+//
+//		frameToCropTransform =
+//				ImageUtils.getTransformationMatrix(
+//						previewWidth, previewHeight,
+//						cropSize, cropSize,
+//						0, MAINTAIN_ASPECT);
+//		cropToFrameTransform = new Matrix();
+//		frameToCropTransform.invert(cropToFrameTransform);
+//
+//		// No mutex needed as this method is not reentrant.
+//		if (computingDetection) {
+//			//readyForNextImage(); // just add callback buffer and toggle an isprocessingframe
+//			readyForNextImage = false;
+//			return;
+//		}
+//		computingDetection = true;
+//		Log.i(TAG, "Preparing image " + currTimestamp + " for detection in bg thread.");
+//
+//		image.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight);
+//
+//		//readyForNextImage(); // just add callback buffer and toggle an isprocessingframe
+//
+//		final Canvas canvas = new Canvas(croppedBitmap);
+//		canvas.drawBitmap(image, frameToCropTransform, null);
+//		// For examining the actual TF input.
+//		if (SAVE_PREVIEW_BITMAP) {
+//			Runnable r = new Runnable() {
+//				@Override
+//				public void run() {
+//					ImageUtils.saveBitmap(croppedBitmap);
+//				}
+//			};
+//			processImageExecutors.execute(r);
+//		}
+//		if (detectInBackground != null){
+////			detectInBackground.run();
+//			processImageExecutors.execute(detectInBackground);
+//		}
+
+//	}
+
+	public Runnable detectInBackground = new Runnable() {
 		@Override
 		public void run() {
 			if (mCamera != null) {
@@ -869,6 +1009,8 @@ public abstract class VideoStream extends MediaStream {
 						result.setLocation(location);
 						mappedRecognitions.add(result);
 						if(displayPosition!=null) {
+							Log.i(TAG, "Checking distance...");
+							checkDistance.run();
 //
 //							Point nPoint = new Point(displayPosition[0],displayPosition[1],(displayPosition[2]+180));
 //							ans = PointDetectAction(nPoint);
@@ -885,89 +1027,42 @@ public abstract class VideoStream extends MediaStream {
 //								//App.receivedNotification  = false;
 //								Log.d(" RESULT1 ","X: " + displayPosition[0]+" Y: " + displayPosition[1]);
 //							}
-							checkDistance = new Runnable() {
-								@Override
-								public void run() {
+//							processImageExecutors.execute(checkDistance);
+//							Thread thread = new Thread(checkDistance);
+//							thread.run();
 
-									Point nPoint = new Point(displayPosition[0],displayPosition[1],(displayPosition[2]+180));
-									ans = PointDetectAction(nPoint);
-
-									Log.d(" RESULT0 ", "\nRESULT SHOW"+"\nCurrent Detection->" +
-											"\n X: " + displayPosition[0]+" Y: " + displayPosition[1] +
-											"\n X: " + currentDetectPoint.x+" Y: " + currentDetectPoint.y +
-											"\nUPDATEs Detection: " + ans);
-
-									if(ans){
-										//objectIn9Sectors(location);
-										MainActivity.faceDetected = true;
-										robotWorkStatus = 1;
-										//App.receivedNotification  = false;
-										Log.d(" RESULT1 ","X: " + displayPosition[0]+" Y: " + displayPosition[1]);
-									}
-								}
-							};
-							executorService.submit(checkDistance);
-
+						}
+						else{
+							Log.i(TAG, "displayPosition is nul!!!");
 						}
 
 					}
 				}
 
-				if (MainActivity.faceDetected == true){//CameraActivity.faceDetected == true) {
-					DateFormat dateFormat = new SimpleDateFormat("yyyymmdd_hhmmss");
-					Date date = new Date();
-					BitmapHandler bitmapHandler = new BitmapHandler(cropCopyBitmap, dateFormat.format(date) + ".jpg", 1L);
-					Log.i("FileFormat", dateFormat.format(date) + ".jpg");
-					try {
-						bitmapHandler.save();
-//						bitmapHandler.uploadFile("192.168.21.236", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
-//                bitmapHandler.uploadFile("192.168.21.194","sftpuser", 22,"q1w2e3r4","sdcard/" + bitmapHandler.getFilename(),"/data/sftpuser/upload");
-						bitmapHandler.uploadFile("172.18.4.35", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
-						if (mqttHelper.isMqttConnected() && ans) {
-							Log.i(TAG, "detected something");
-							NavigationApi.get().stopNavigationService();
-							mqttHelper.publishRbNotification("Human Detected", bitmapHandler.getFilename(), "5c899c07-7b0a-4f1c-810e-f4bb419e1547");
-						}else{
-							Log.w(TAG, "Error, mqtt not connected!");
-						}
-
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-
-				computingDetection = false;
-
-				//tracker.trackResults(mappedRecognitions, currTimestamp);
-				//trackingOverlay.postInvalidate();
-
-							/*computingDetection = false;
-							((Activity)SessionBuilder.getInstance().getContext()).runOnUiThread(
-									new Runnable() {
-										@Override
-										public void run() {
-											*//*screenshot.setImageBitmap(cropCopyBitmap);
-
-											showFrameInfo(previewWidth + "x" + previewHeight);
-											showCropInfo(cropCopyBitmap.getWidth() + "x" + cropCopyBitmap.getHeight());
-											showInference(lastProcessingTimeMs + "ms");*//*
-										}
-									});*/
-/*
-							// ----------------received notification------------------
-							if (receivedNotification == true) {
-								JSONObject jsonObject;
-								try {
-									jsonObject = new JSONObject(payload.toString());
-									String toastMessage = jsonObject.getString("status").equals("acknowledged") ? "Notification Acknowledged!" : payload;
-									Log.i("DectectorActivity", toastMessage);
-									Toast.makeText(DetectorActivity.this, toastMessage, Toast.LENGTH_LONG).show();
-								} catch (Exception e) {
-									e.printStackTrace();
-								}
-								//Toast.makeText(DetectorActivity.this, payload, Toast.LENGTH_LONG).show();
-								receivedNotification = false;
-							}*/
+//				if (MainActivity.faceDetected == true){//CameraActivity.faceDetected == true) {
+//					DateFormat dateFormat = new SimpleDateFormat("yyyymmdd_hhmmss");
+//					Date date = new Date();
+//					BitmapHandler bitmapHandler = new BitmapHandler(cropCopyBitmap, dateFormat.format(date) + ".jpg", 1L);
+//					Log.i("FileFormat", dateFormat.format(date) + ".jpg");
+//					try {
+//						bitmapHandler.save();
+////						bitmapHandler.uploadFile("192.168.21.236", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
+////                bitmapHandler.uploadFile("192.168.21.194","sftpuser", 22,"q1w2e3r4","sdcard/" + bitmapHandler.getFilename(),"/data/sftpuser/upload");
+//						bitmapHandler.uploadFile("172.18.4.35", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
+//						if (mqttHelper.isMqttConnected() && ans) {
+//							//Log.i(TAG, "detected something");
+//							NavigationApi.get().stopNavigationService();
+//							mqttHelper.publishRbNotification("Human Detected", bitmapHandler.getFilename(), "5c899c07-7b0a-4f1c-810e-f4bb419e1547");
+//						}else{
+//							//Log.w(TAG, "Error, mqtt not connected!");
+//						}
+//
+//					} catch (Exception e) {
+//						e.printStackTrace();
+//					}
+//				}
+//
+//				computingDetection = false;
 			}
 
 		}
@@ -1309,12 +1404,6 @@ public abstract class VideoStream extends MediaStream {
 
 
 
-
-
-
-
-
-
 	public static int CAMERADISTANCETODETECT = 107; //107 = 5 meters; ensure camera can only view 5 meters
 	public static Point currentDetectPoint = null;
 
@@ -1328,9 +1417,49 @@ public abstract class VideoStream extends MediaStream {
 		}return false;
 	}
 
-	private ExecutorService executorService = Executors.newFixedThreadPool(1);
+	private ExecutorService executorService = Executors.newFixedThreadPool(2);
 
-	private Runnable checkDistance;
+	private Runnable checkDistance= new Runnable() {
+		@Override
+		public void run() {
+
+			//Point nPoint = new Point(displayPosition[0],displayPosition[1],(displayPosition[2]+180));
+			//ans = PointDetectAction(nPoint);
+
+			Log.d(" RESULT0 ", "\nRESULT SHOW"+"\nCurrent Detection->" +
+					"\n X: " + displayPosition[0]+" Y: " + displayPosition[1] +
+					"\n X: " + currentDetectPoint.x+" Y: " + currentDetectPoint.y +
+					"\nUPDATEs Detection: " + ans);
+			if(displayPosition!= null && //otherwise will fail if no display position
+					PointDetectAction(new Point(displayPosition[0],displayPosition[1],(displayPosition[2]+180)))){
+				//objectIn9Sectors(location);
+//				MainActivity.faceDetected = true;
+				robotWorkStatus = 1;
+				App.receivedNotification  = false;
+				Log.d(" RESULT1 ","X: " + displayPosition[0]+" Y: " + displayPosition[1]);
+				//if (MainActivity.faceDetected == true){//CameraActivity.faceDetected == true) {
+				DateFormat dateFormat = new SimpleDateFormat("yyyymmdd_hhmmss");
+				Date date = new Date();
+				BitmapHandler bitmapHandler = new BitmapHandler(cropCopyBitmap, dateFormat.format(date) + ".jpg", 1L);
+				Log.i("FileFormat", dateFormat.format(date) + ".jpg");
+				try {
+					bitmapHandler.save();
+//						bitmapHandler.uploadFile("192.168.21.236", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
+                bitmapHandler.uploadFile("192.168.21.194","sftpuser", 22,"q1w2e3r4","sdcard/" + bitmapHandler.getFilename(),"/data/sftpuser/upload");
+//					bitmapHandler.uploadFile("172.18.4.35", "robotmanager", 9300, "robotmanager", "sdcard/" + bitmapHandler.getFilename(), "/home/godzilla/mount/web/html/sftp/NCS");
+					if (mqttHelper.isMqttConnected() && ans) {
+						NavigationApi.get().stopNavigationService();
+						mqttHelper.publishRbNotification("Human Detected", bitmapHandler.getFilename(), "5c899c07-7b0a-4f1c-810e-f4bb419e1547");
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				//}
+
+
+			}
+		}
+	};;
 
 
 //Location with camera view angle range
