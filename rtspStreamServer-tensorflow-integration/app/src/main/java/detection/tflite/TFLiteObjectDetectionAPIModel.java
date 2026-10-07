@@ -21,7 +21,9 @@ import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.os.Trace;
 
+import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
+import org.tensorflow.lite.Tensor;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -33,28 +35,25 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
-
-import detection.env.Logger;
 
 /**
  * Wrapper for frozen detection models trained using the Tensorflow Object Detection API:
  * github.com/tensorflow/models/tree/master/research/object_detection
  */
 public class TFLiteObjectDetectionAPIModel implements Classifier {
-  private static final Logger LOGGER = new Logger();
-
   // Only return this many results.
   private static final int NUM_DETECTIONS = 10;
-  // Float model
-  private static final float IMAGE_MEAN = 128.0f;
-  private static final float IMAGE_STD = 128.0f;
+  private static final int EXPECTED_INPUT_SIZE = 300;
+  private static final int EXPECTED_LABEL_COUNT = 91;
+  private static final int LABEL_OFFSET = 1;
+  private static final String ASSET_PREFIX = "file:///android_asset/";
   // Number of threads in the java app
   private static final int NUM_THREADS = 4;
-  private boolean isModelQuantized;
   // Config values.
   private int inputSize;
   // Pre-allocated buffers.
@@ -82,12 +81,140 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
   /** Memory-map the model file in Assets. */
   private static MappedByteBuffer loadModelFile(AssetManager assets, String modelFilename)
       throws IOException {
-    AssetFileDescriptor fileDescriptor = assets.openFd(modelFilename);
-    FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
-    FileChannel fileChannel = inputStream.getChannel();
-    long startOffset = fileDescriptor.getStartOffset();
-    long declaredLength = fileDescriptor.getDeclaredLength();
-    return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+    try (AssetFileDescriptor fileDescriptor = assets.openFd(modelFilename);
+        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+        FileChannel fileChannel = inputStream.getChannel()) {
+      long startOffset = fileDescriptor.getStartOffset();
+      long declaredLength = fileDescriptor.getDeclaredLength();
+      return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+    }
+  }
+
+  private static List<String> loadLabels(AssetManager assets, String labelFilename)
+      throws IOException {
+    if (labelFilename == null || labelFilename.trim().isEmpty()) {
+      throw new IllegalArgumentException("Label asset path is required");
+    }
+
+    final String actualFilename =
+        labelFilename.startsWith(ASSET_PREFIX)
+            ? labelFilename.substring(ASSET_PREFIX.length())
+            : labelFilename;
+    if (actualFilename.isEmpty()) {
+      throw new IllegalArgumentException("Label asset path is invalid");
+    }
+
+    final ArrayList<String> loadedLabels = new ArrayList<>();
+    try (InputStream labelsInput = assets.open(actualFilename);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(labelsInput))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        loadedLabels.add(line);
+      }
+    }
+    validateLabels(loadedLabels);
+    return loadedLabels;
+  }
+
+  private static void validateLabels(List<String> candidateLabels) {
+    if (candidateLabels == null || candidateLabels.size() != EXPECTED_LABEL_COUNT) {
+      throw new IllegalArgumentException(
+          "Expected exactly " + EXPECTED_LABEL_COUNT + " labels");
+    }
+    for (int index = 0; index < candidateLabels.size(); index++) {
+      final String label = candidateLabels.get(index);
+      if (label == null || label.trim().isEmpty()) {
+        throw new IllegalArgumentException("Label " + index + " is empty");
+      }
+    }
+  }
+
+  private static void validateTensor(
+      String name, Tensor tensor, DataType expectedType, int[] expectedShape) {
+    if (tensor.dataType() != expectedType || !Arrays.equals(tensor.shape(), expectedShape)) {
+      throw new IllegalArgumentException(
+          name
+              + " must be "
+              + expectedType
+              + " "
+              + Arrays.toString(expectedShape)
+              + ", found "
+              + tensor.dataType()
+              + " "
+              + Arrays.toString(tensor.shape()));
+    }
+  }
+
+  private void validateModelContract() {
+    if (tfLite.getInputTensorCount() != 1) {
+      throw new IllegalArgumentException("Expected exactly one model input tensor");
+    }
+    if (tfLite.getOutputTensorCount() != 4) {
+      throw new IllegalArgumentException("Expected exactly four model output tensors");
+    }
+    validateTensor(
+        "Input tensor",
+        tfLite.getInputTensor(0),
+        DataType.UINT8,
+        new int[] {1, EXPECTED_INPUT_SIZE, EXPECTED_INPUT_SIZE, 3});
+    validateTensor(
+        "Output tensor 0",
+        tfLite.getOutputTensor(0),
+        DataType.FLOAT32,
+        new int[] {1, NUM_DETECTIONS, 4});
+    validateTensor(
+        "Output tensor 1",
+        tfLite.getOutputTensor(1),
+        DataType.FLOAT32,
+        new int[] {1, NUM_DETECTIONS});
+    validateTensor(
+        "Output tensor 2",
+        tfLite.getOutputTensor(2),
+        DataType.FLOAT32,
+        new int[] {1, NUM_DETECTIONS});
+    validateTensor(
+        "Output tensor 3", tfLite.getOutputTensor(3), DataType.FLOAT32, new int[] {1});
+  }
+
+  static TFLiteObjectDetectionAPIModel createForTesting(
+      ByteBuffer modelBuffer, List<String> candidateLabels, int inputSize, boolean isQuantized) {
+    return createFromBuffer(modelBuffer, candidateLabels, inputSize, isQuantized);
+  }
+
+  private static TFLiteObjectDetectionAPIModel createFromBuffer(
+      ByteBuffer modelBuffer, List<String> candidateLabels, int inputSize, boolean isQuantized) {
+    if (modelBuffer == null) {
+      throw new IllegalArgumentException("Model buffer is required");
+    }
+    if (inputSize != EXPECTED_INPUT_SIZE) {
+      throw new IllegalArgumentException("Input size must be " + EXPECTED_INPUT_SIZE);
+    }
+    if (!isQuantized) {
+      throw new IllegalArgumentException("The bundled model requires quantized UINT8 input");
+    }
+    validateLabels(candidateLabels);
+
+    final TFLiteObjectDetectionAPIModel detector = new TFLiteObjectDetectionAPIModel();
+    detector.labels.addAll(candidateLabels);
+    detector.inputSize = inputSize;
+    try {
+      final Interpreter.Options options = new Interpreter.Options().setNumThreads(NUM_THREADS);
+      detector.tfLite = new Interpreter(modelBuffer, options);
+      detector.tfLite.allocateTensors();
+      detector.validateModelContract();
+    } catch (RuntimeException error) {
+      detector.close();
+      throw error;
+    }
+
+    detector.imgData = ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3);
+    detector.imgData.order(ByteOrder.nativeOrder());
+    detector.intValues = new int[inputSize * inputSize];
+    detector.outputLocations = new float[1][NUM_DETECTIONS][4];
+    detector.outputClasses = new float[1][NUM_DETECTIONS];
+    detector.outputScores = new float[1][NUM_DETECTIONS];
+    detector.numDetections = new float[1];
+    return detector;
   }
 
   /**
@@ -106,119 +233,116 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
       final int inputSize,
       final boolean isQuantized)
       throws IOException {
-    final TFLiteObjectDetectionAPIModel d = new TFLiteObjectDetectionAPIModel();
-
-    InputStream labelsInput = null;
-    String actualFilename = labelFilename.split("file:///android_asset/")[1];
-    labelsInput = assetManager.open(actualFilename);
-    BufferedReader br = null;
-    br = new BufferedReader(new InputStreamReader(labelsInput));
-    String line;
-    while ((line = br.readLine()) != null) {
-      LOGGER.w(line);
-      d.labels.add(line);
-    }
-    br.close();
-
-    d.inputSize = inputSize;
-
-    try {
-      d.tfLite = new Interpreter(loadModelFile(assetManager, modelFilename));
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-
-    d.isModelQuantized = isQuantized;
-    // Pre-allocate buffers.
-    int numBytesPerChannel;
-    if (isQuantized) {
-      numBytesPerChannel = 1; // Quantized
-    } else {
-      numBytesPerChannel = 4; // Floating point
-    }
-    d.imgData = ByteBuffer.allocateDirect(1 * d.inputSize * d.inputSize * 3 * numBytesPerChannel);
-    d.imgData.order(ByteOrder.nativeOrder());
-    d.intValues = new int[d.inputSize * d.inputSize];
-
-    d.tfLite.setNumThreads(NUM_THREADS);
-    d.outputLocations = new float[1][NUM_DETECTIONS][4];
-    d.outputClasses = new float[1][NUM_DETECTIONS];
-    d.outputScores = new float[1][NUM_DETECTIONS];
-    d.numDetections = new float[1];
-    return d;
+    return createFromBuffer(
+        loadModelFile(assetManager, modelFilename),
+        loadLabels(assetManager, labelFilename),
+        inputSize,
+        isQuantized);
   }
 
   @Override
   public List<Recognition> recognizeImage(final Bitmap bitmap) {
+    if (tfLite == null) {
+      throw new IllegalStateException("Classifier is closed");
+    }
+    if (bitmap == null) {
+      throw new IllegalArgumentException("Bitmap is required");
+    }
+    if (bitmap.getWidth() != inputSize || bitmap.getHeight() != inputSize) {
+      throw new IllegalArgumentException(
+          "Bitmap must be exactly " + inputSize + "x" + inputSize);
+    }
+
     // Log this method so that it can be analyzed with systrace.
     Trace.beginSection("recognizeImage");
+    try {
+      Trace.beginSection("preprocessBitmap");
+      try {
+        bitmap.getPixels(intValues, 0, inputSize, 0, 0, inputSize, inputSize);
 
-    Trace.beginSection("preprocessBitmap");
-    // Preprocess the image data from 0-255 int to normalized float based
-    // on the provided parameters.
-    bitmap.getPixels(intValues, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
-
-    imgData.rewind();
-    for (int i = 0; i < inputSize; ++i) {
-      for (int j = 0; j < inputSize; ++j) {
-        int pixelValue = intValues[i * inputSize + j];
-        if (isModelQuantized) {
-          // Quantized model
-          imgData.put((byte) ((pixelValue >> 16) & 0xFF));
-          imgData.put((byte) ((pixelValue >> 8) & 0xFF));
-          imgData.put((byte) (pixelValue & 0xFF));
-        } else { // Float model
-          imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
-          imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
-          imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
+        imgData.rewind();
+        for (int i = 0; i < inputSize; ++i) {
+          for (int j = 0; j < inputSize; ++j) {
+            int pixelValue = intValues[i * inputSize + j];
+            imgData.put((byte) ((pixelValue >> 16) & 0xFF));
+            imgData.put((byte) ((pixelValue >> 8) & 0xFF));
+            imgData.put((byte) (pixelValue & 0xFF));
+          }
         }
+      } finally {
+        Trace.endSection();
       }
+
+      outputLocations = new float[1][NUM_DETECTIONS][4];
+      outputClasses = new float[1][NUM_DETECTIONS];
+      outputScores = new float[1][NUM_DETECTIONS];
+      numDetections = new float[1];
+
+      final Object[] inputArray = {imgData};
+      final Map<Integer, Object> outputMap = new HashMap<>();
+      outputMap.put(0, outputLocations);
+      outputMap.put(1, outputClasses);
+      outputMap.put(2, outputScores);
+      outputMap.put(3, numDetections);
+
+      Trace.beginSection("run");
+      try {
+        tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
+      } finally {
+        Trace.endSection();
+      }
+
+      final float rawDetectionCount = numDetections[0];
+      requireFinite(rawDetectionCount, "Detection count");
+      if (rawDetectionCount != (int) rawDetectionCount
+          || rawDetectionCount < 0
+          || rawDetectionCount > NUM_DETECTIONS) {
+        throw new IllegalStateException("Invalid detection count: " + rawDetectionCount);
+      }
+
+      final int detectionCount = (int) rawDetectionCount;
+      final ArrayList<Recognition> recognitions = new ArrayList<>(detectionCount);
+      for (int i = 0; i < detectionCount; ++i) {
+        for (int coordinate = 0; coordinate < 4; coordinate++) {
+          requireFinite(outputLocations[0][i][coordinate], "Detection location");
+        }
+        requireFinite(outputScores[0][i], "Detection score");
+        final RectF detection =
+            new RectF(
+                outputLocations[0][i][1] * inputSize,
+                outputLocations[0][i][0] * inputSize,
+                outputLocations[0][i][3] * inputSize,
+                outputLocations[0][i][2] * inputSize);
+        recognitions.add(
+            new Recognition(
+                String.valueOf(i),
+                labelForClass(outputClasses[0][i]),
+                outputScores[0][i],
+                detection));
+      }
+      return recognitions;
+    } finally {
+      Trace.endSection();
     }
-    Trace.endSection(); // preprocessBitmap
+  }
 
-    // Copy the input data into TensorFlow.
-    Trace.beginSection("feed");
-    outputLocations = new float[1][NUM_DETECTIONS][4];
-    outputClasses = new float[1][NUM_DETECTIONS];
-    outputScores = new float[1][NUM_DETECTIONS];
-    numDetections = new float[1];
-
-    Object[] inputArray = {imgData};
-    Map<Integer, Object> outputMap = new HashMap<>();
-    outputMap.put(0, outputLocations);
-    outputMap.put(1, outputClasses);
-    outputMap.put(2, outputScores);
-    outputMap.put(3, numDetections);
-    Trace.endSection();
-
-    // Run the inference call.
-    Trace.beginSection("run");
-    tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
-    Trace.endSection();
-
-    // Show the best detections.
-    // after scaling them back to the input size.
-    final ArrayList<Recognition> recognitions = new ArrayList<>(NUM_DETECTIONS);
-    for (int i = 0; i < NUM_DETECTIONS; ++i) {
-      final RectF detection =
-          new RectF(
-              outputLocations[0][i][1] * inputSize,
-              outputLocations[0][i][0] * inputSize,
-              outputLocations[0][i][3] * inputSize,
-              outputLocations[0][i][2] * inputSize);
-      // SSD Mobilenet V1 Model assumes class 0 is background class
-      // in label file and class labels start from 1 to number_of_classes+1,
-      // while outputClasses correspond to class index from 0 to number_of_classes
-      int labelOffset = 1;
-      recognitions.add(
-          new Recognition(
-              "" + i,
-              labels.get((int) outputClasses[0][i] + labelOffset),
-              outputScores[0][i],
-              detection));
+  private static void requireFinite(float value, String name) {
+    if (Float.isNaN(value) || Float.isInfinite(value)) {
+      throw new IllegalStateException(name + " is not finite");
     }
-    Trace.endSection(); // "recognizeImage"
-    return recognitions;
+  }
+
+  String labelForClass(float rawClass) {
+    requireFinite(rawClass, "Detection class");
+    if (rawClass != (int) rawClass) {
+      throw new IllegalStateException("Detection class is not an integer: " + rawClass);
+    }
+    final int classIndex = (int) rawClass;
+    final int labelIndex = classIndex + LABEL_OFFSET;
+    if (classIndex < 0 || labelIndex >= labels.size()) {
+      throw new IllegalStateException("Detection class is outside the label map: " + rawClass);
+    }
+    return labels.get(labelIndex);
   }
 
   @Override
@@ -230,14 +354,10 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
   }
 
   @Override
-  public void close() {}
-
-  public void setNumThreads(int num_threads) {
-    if (tfLite != null) tfLite.setNumThreads(num_threads);
-  }
-
-  @Override
-  public void setUseNNAPI(boolean isChecked) {
-    if (tfLite != null) tfLite.setUseNNAPI(isChecked);
+  public void close() {
+    if (tfLite != null) {
+      tfLite.close();
+      tfLite = null;
+    }
   }
 }
