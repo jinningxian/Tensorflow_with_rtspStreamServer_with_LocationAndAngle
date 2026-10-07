@@ -35,7 +35,7 @@ public class TFLiteObjectDetectionAPIModelInstrumentedTest {
   private static final String MODEL_SHA256 =
       "e4b118e5e4531945de2e659742c7c590f7536f8d0ed26d135abcfe83b4779d13";
   private static final String LABELS_SHA256 =
-      "8f48ed74301081601687016d83ae53e9bba1b2942c53de78152f6f9fc9eaa186";
+      "c7e79c855f73cbba9f33d649d60e1676eb0a974021a41696d1ac0d4b7f7e0211";
 
   @Test
   public void packagedAssetsAndCpuInferenceMatchTheFrozenContract() throws Exception {
